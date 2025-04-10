@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum InsuranceType {
+  TERM
+  WHOLE
+  UNIVERSAL
+  UNSURE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+model Lead {
+  id              String        @id @default(cuid())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  age             Int
+  gender          String
+  incomeRange     String
+  maritalStatus   MaritalStatus
+  dependents      Int
+  coverageAmount  Float
+  insuranceType   InsuranceType
+  status          LeadStatus    @default(NEW)
+  source          String?       // UTM source
+  medium          String?       // UTM medium
+  campaign        String?       // UTM campaign
+  term            String?       // UTM term
+  content         String?       // UTM content
+  notes           String?       @db.Text
+  assignedAgent   Agent?        @relation(fields: [agentId], references: [id])
+  agentId         String?
+  calendlyUrl     String?
+  leadScore       Int?         @default(0)
+  activities      LeadActivity[]
+  metadata        Json?        // For storing additional tracking data
+  ipAddress       String?
+  userAgent       String?      @db.Text
+  lastContactedAt DateTime?
+}
+
+model Agent {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  email           String    @unique
+  name            String
+  phone           String?
+  active          Boolean   @default(true)
+  leads           Lead[]
+  activities      LeadActivity[]
+  maxLeadsPerDay  Int       @default(10)
+  preferences     Json?     // Store lead preferences as JSON
+  apiKey          String?   @unique // For webhook integrations
+  lastLoginAt     DateTime?
+  role            String    @default("AGENT") // ADMIN, AGENT
+  notificationPreferences Json? // Email, SMS, etc.
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  agentId   String
+  action    String   // e.g., "viewed", "contacted", "qualified"
+  notes     String?  @db.Text
+  metadata  Json?    // Additional activity data
+} 
