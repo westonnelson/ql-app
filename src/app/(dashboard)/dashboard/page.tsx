@@ -1,34 +1,67 @@
-import { PrismaClient } from "@prisma/client"
+'use client'
+
+import { useEffect, useState } from 'react'
 import { LeadsTable } from "@/components/dashboard/leads-table"
+import { supabase } from '@/lib/supabase'
 
-const prisma = new PrismaClient()
-
-async function getStats() {
-  const [totalLeads, newLeads, qualifiedLeads, convertedLeads] = await Promise.all([
-    prisma.lead.count(),
-    prisma.lead.count({ where: { status: "NEW" } }),
-    prisma.lead.count({ where: { status: "QUALIFIED" } }),
-    prisma.lead.count({ where: { status: "CONVERTED" } }),
-  ])
-
-  return {
-    totalLeads,
-    newLeads,
-    qualifiedLeads,
-    convertedLeads,
-  }
-}
-
-async function getRecentLeads() {
-  return prisma.lead.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 10,
+export default function DashboardPage() {
+  const [stats, setStats] = useState({
+    totalLeads: 0,
+    newLeads: 0,
+    qualifiedLeads: 0,
+    convertedLeads: 0,
   })
-}
+  const [recentLeads, setRecentLeads] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-export default async function DashboardPage() {
-  const stats = await getStats()
-  const recentLeads = await getRecentLeads()
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch all leads for stats
+        const { data: allLeads, error: allLeadsError } = await supabase
+          .from('leads')
+          .select('*')
+
+        if (allLeadsError) {
+          console.error('Error fetching all leads:', allLeadsError)
+          return
+        }
+
+        // Calculate stats
+        const newStats = {
+          totalLeads: allLeads?.length || 0,
+          newLeads: allLeads?.filter(lead => lead.status === 'NEW').length || 0,
+          qualifiedLeads: allLeads?.filter(lead => lead.status === 'QUALIFIED').length || 0,
+          convertedLeads: allLeads?.filter(lead => lead.status === 'CONVERTED').length || 0,
+        }
+        setStats(newStats)
+
+        // Fetch recent leads
+        const { data: recentData, error: recentError } = await supabase
+          .from('leads')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (recentError) {
+          console.error('Error fetching recent leads:', recentError)
+          return
+        }
+
+        setRecentLeads(recentData || [])
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="space-y-8">
@@ -82,7 +115,7 @@ export default async function DashboardPage() {
             View all leads
           </a>
         </div>
-        <LeadsTable data={recentLeads} />
+        <LeadsTable leads={recentLeads} />
       </div>
     </div>
   )

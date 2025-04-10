@@ -13,23 +13,37 @@ import {
 import { formatPhoneNumber, formatCurrency } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { type Lead } from "@prisma/client"
+
+// Define the Lead type based on our Supabase schema
+interface Lead {
+  id: string
+  created_at: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  coverage_amount: number
+  insurance_type: string
+  status: string
+  lead_score: number
+  source: string
+}
 
 const columns: ColumnDef<Lead>[] = [
   {
-    accessorKey: "createdAt",
+    accessorKey: "created_at",
     header: "Date",
     cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"))
+      const date = new Date(row.getValue("created_at"))
       return date.toLocaleDateString()
     },
   },
   {
-    accessorKey: "firstName",
+    accessorKey: "first_name",
     header: "First Name",
   },
   {
-    accessorKey: "lastName",
+    accessorKey: "last_name",
     header: "Last Name",
   },
   {
@@ -42,12 +56,12 @@ const columns: ColumnDef<Lead>[] = [
     cell: ({ row }) => formatPhoneNumber(row.getValue("phone")),
   },
   {
-    accessorKey: "coverageAmount",
+    accessorKey: "coverage_amount",
     header: "Coverage",
-    cell: ({ row }) => formatCurrency(row.getValue("coverageAmount")),
+    cell: ({ row }) => formatCurrency(row.getValue("coverage_amount")),
   },
   {
-    accessorKey: "insuranceType",
+    accessorKey: "insurance_type",
     header: "Type",
   },
   {
@@ -73,20 +87,20 @@ const columns: ColumnDef<Lead>[] = [
     ),
   },
   {
-    accessorKey: "leadScore",
+    accessorKey: "lead_score",
     header: "Score",
     cell: ({ row }) => (
       <div className="flex items-center">
         <div
           className={`px-2 py-1 rounded text-white text-xs ${
-            row.getValue("leadScore") >= 80
+            row.getValue("lead_score") >= 80
               ? "bg-green-500"
-              : row.getValue("leadScore") >= 60
+              : row.getValue("lead_score") >= 60
               ? "bg-yellow-500"
               : "bg-red-500"
           }`}
         >
-          {row.getValue("leadScore")}
+          {row.getValue("lead_score")}
         </div>
       </div>
     ),
@@ -98,99 +112,67 @@ const columns: ColumnDef<Lead>[] = [
 ]
 
 interface LeadsTableProps {
-  data: Lead[]
+  leads: Lead[]
 }
 
-export function LeadsTable({ data }: LeadsTableProps) {
+export function LeadsTable({ leads }: LeadsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState("")
 
   const table = useReactTable({
-    data,
+    data: leads,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       globalFilter,
     },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
   })
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Input
-          placeholder="Search all columns..."
+          placeholder="Search leads..."
           value={globalFilter ?? ""}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
       </div>
       <div className="rounded-md border">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="w-full">
+          <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="border-b px-4 py-2 text-left text-sm font-medium text-gray-500"
                   >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        {...{
-                          className: header.column.getCanSort()
-                            ? "cursor-pointer select-none"
-                            : "",
-                          onClick: header.column.getToggleSortingHandler(),
-                        }}
-                      >
-                        {header.renderHeader()}
-                        {{
-                          asc: " 🔼",
-                          desc: " 🔽",
-                        }[header.column.getIsSorted() as string] ?? null}
-                      </div>
-                    )}
+                    {header.isPlaceholder
+                      ? null
+                      : header.column.columnDef.header}
                   </th>
                 ))}
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="hover:bg-gray-50 transition-colors cursor-pointer"
-              >
+              <tr key={row.id}>
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                    className="border-b px-4 py-2 text-sm"
                   >
-                    {cell.renderCell()}
+                    {cell.column.columnDef.cell
+                      ? cell.column.columnDef.cell({ row })
+                      : cell.getValue() as string}
                   </td>
                 ))}
               </tr>
@@ -199,23 +181,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
         </table>
       </div>
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-500">
-          Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length} results
-        </div>
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            First
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -232,14 +198,10 @@ export function LeadsTable({ data }: LeadsTableProps) {
           >
             Next
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            Last
-          </Button>
+        </div>
+        <div className="text-sm text-gray-500">
+          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          {table.getPageCount()}
         </div>
       </div>
     </div>

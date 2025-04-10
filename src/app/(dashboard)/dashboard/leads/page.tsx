@@ -1,20 +1,85 @@
-import { PrismaClient } from "@prisma/client"
+'use client'
+
+import { useEffect, useState } from 'react'
 import { LeadsTable } from "@/components/dashboard/leads-table"
 import { Button } from "@/components/ui/button"
+import { supabase } from '@/lib/supabase'
 
-const prisma = new PrismaClient()
+export default function LeadsPage() {
+  const [leads, setLeads] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-async function getLeads() {
-  return prisma.lead.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      assignedAgent: true,
-    },
-  })
-}
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('*')
+          .order('created_at', { ascending: false })
 
-export default async function LeadsPage() {
-  const leads = await getLeads()
+        if (error) {
+          console.error('Error fetching leads:', error)
+          return
+        }
+
+        setLeads(data || [])
+      } catch (error) {
+        console.error('Error fetching leads:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLeads()
+  }, [])
+
+  const handleExportCSV = () => {
+    const csv = [
+      // CSV Headers
+      [
+        "Date",
+        "First Name",
+        "Last Name",
+        "Email",
+        "Phone",
+        "Coverage Amount",
+        "Insurance Type",
+        "Status",
+        "Lead Score",
+        "Source",
+      ].join(","),
+      // CSV Data
+      ...leads.map((lead) => [
+        new Date(lead.created_at).toLocaleDateString(),
+        lead.first_name,
+        lead.last_name,
+        lead.email,
+        lead.phone,
+        lead.coverage_amount,
+        lead.insurance_type,
+        lead.status,
+        lead.lead_score,
+        lead.source,
+      ].join(",")),
+    ].join("\n")
+
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.setAttribute("hidden", "")
+    a.setAttribute("href", url)
+    a.setAttribute(
+      "download",
+      `leads-${new Date().toISOString().split("T")[0]}.csv`
+    )
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="space-y-8">
@@ -26,49 +91,7 @@ export default async function LeadsPage() {
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
-            onClick={() => {
-              const csv = [
-                // CSV Headers
-                [
-                  "Date",
-                  "First Name",
-                  "Last Name",
-                  "Email",
-                  "Phone",
-                  "Coverage Amount",
-                  "Insurance Type",
-                  "Status",
-                  "Lead Score",
-                  "Source",
-                ].join(","),
-                // CSV Data
-                ...leads.map((lead) => [
-                  new Date(lead.createdAt).toLocaleDateString(),
-                  lead.firstName,
-                  lead.lastName,
-                  lead.email,
-                  lead.phone,
-                  lead.coverageAmount,
-                  lead.insuranceType,
-                  lead.status,
-                  lead.leadScore,
-                  lead.source,
-                ].join(",")),
-              ].join("\n")
-
-              const blob = new Blob([csv], { type: "text/csv" })
-              const url = window.URL.createObjectURL(blob)
-              const a = document.createElement("a")
-              a.setAttribute("hidden", "")
-              a.setAttribute("href", url)
-              a.setAttribute(
-                "download",
-                `leads-${new Date().toISOString().split("T")[0]}.csv`
-              )
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-            }}
+            onClick={handleExportCSV}
           >
             Export to CSV
           </Button>
@@ -119,9 +142,9 @@ export default async function LeadsPage() {
             </div>
           </div>
         </div>
-
-        <LeadsTable data={leads} />
       </div>
+
+      <LeadsTable leads={leads} />
     </div>
   )
 } 
