@@ -1,12 +1,15 @@
+'use client'
+
 import posthog from 'posthog-js'
 import { PostHog } from 'posthog-js'
 
-export const posthogClient: PostHog = posthog
+let posthogClient: PostHog | null = null
 
-// Check that PostHog is client-side
-if (typeof window !== 'undefined') {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+// Initialize PostHog only on the client side
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+  posthogClient = posthog
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
     capture_pageview: false, // We'll handle this manually
     persistence: 'localStorage',
     autocapture: true,
@@ -14,4 +17,6 @@ if (typeof window !== 'undefined') {
       if (process.env.NODE_ENV === 'development') posthog.debug()
     }
   })
-} 
+}
+
+export { posthogClient } 

@@ -1,19 +1,29 @@
+'use client'
+
 import Script from 'next/script'
 import { PostHogProvider } from 'posthog-js/react'
-import posthog from 'posthog-js'
-
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: 'https://app.posthog.com',
-    loaded: (posthog) => {
-      if (process.env.NODE_ENV === 'development') posthog.debug()
-    },
-  })
-}
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { posthogClient } from '@/lib/posthog'
 
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (pathname && posthogClient) {
+      let url = window.origin + pathname
+      if (searchParams?.toString()) {
+        url = url + `?${searchParams.toString()}`
+      }
+      posthogClient.capture('$pageview', {
+        $current_url: url,
+      })
+    }
+  }, [pathname, searchParams])
+
   return (
-    <PostHogProvider client={posthog}>
+    <PostHogProvider client={posthogClient}>
       {children}
       {/* Google Analytics */}
       <Script

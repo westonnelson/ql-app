@@ -1,30 +1,24 @@
-import { auth } from "@clerk/nextjs"
-import { redirect } from "next/navigation"
-import { MainNav } from "@/components/dashboard/main-nav"
-import { UserNav } from "@/components/dashboard/user-nav"
+'use client'
 
-export default async function DashboardLayout({
+import { MainNav } from '@/components/dashboard/main-nav'
+import { UserNav } from '@/components/dashboard/user-nav'
+
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = auth()
-
-  if (!userId) {
-    redirect("/sign-in")
-  }
-
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="border-b">
-        <div className="flex h-16 items-center px-4">
+    <div className="flex min-h-screen flex-col space-y-6">
+      <header className="sticky top-0 z-40 border-b bg-background">
+        <div className="container flex h-16 items-center justify-between py-4">
           <MainNav />
-          <div className="ml-auto flex items-center space-x-4">
-            <UserNav />
-          </div>
+          <UserNav />
         </div>
-      </div>
-      <div className="flex-1 space-y-4 p-8 pt-6">{children}</div>
+      </header>
+      <main className="container flex w-full flex-1 flex-col overflow-hidden">
+        {children}
+      </main>
     </div>
   )
 } 
