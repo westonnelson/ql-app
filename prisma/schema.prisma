@@ -37,20 +37,26 @@ model Lead {
   lastName        String
   email           String
   phone           String
-  age             Int
+  dateOfBirth     DateTime
   gender          String
-  incomeRange     String
-  maritalStatus   MaritalStatus
-  dependents      Int
+  zipCode         String
+  height          String?
+  weight          String?
+  tobaccoUse      Boolean       @default(false)
+  healthConditions String?
   coverageAmount  Float
-  insuranceType   InsuranceType
-  status          LeadStatus    @default(NEW)
-  source          String?       // UTM source
-  medium          String?       // UTM medium
-  campaign        String?       // UTM campaign
-  term            String?       // UTM term
-  content         String?       // UTM content
-  notes           String?       @db.Text
+  coverageType    String      // Term, Whole, Universal
+  termLength      Int?        // Only for term life
+  monthlyBudget   Int?
+  beneficiaryRelation String?
+  status          String      @default("new") // new, contacted, qualified, closed
+  notes           String?
+  contactedAt     DateTime?
+  utmSource       String?     // UTM source
+  utmMedium       String?     // UTM medium
+  utmCampaign     String?     // UTM campaign
+  utmContent      String?     // UTM content
+  utmTerm         String?     // UTM term
   assignedAgent   Agent?        @relation(fields: [agentId], references: [id])
   agentId         String?
   calendlyUrl     String?
@@ -60,6 +66,10 @@ model Lead {
   ipAddress       String?
   userAgent       String?      @db.Text
   lastContactedAt DateTime?
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Agent {

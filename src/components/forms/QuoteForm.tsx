@@ -1,32 +1,49 @@
 import { useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { type QuoteFormInput, quoteFormSchema } from "@/lib/validations/quote-form"
-import PersonalInfoStep from "./steps/PersonalInfoStep"
-import FamilyInfoStep from "./steps/FamilyInfoStep"
-import CoverageInfoStep from "./steps/CoverageInfoStep"
-import ContactInfoStep from "./steps/ContactInfoStep"
-import { Button } from "@/components/ui/button"
+import { quoteFormSchema } from "@/lib/validations/quote-form"
+import type { QuoteFormData } from "@/lib/validations/quote-form"
+import BasicInfoStep from "./steps/BasicInfoStep"
+import HealthInfoStep from "./steps/HealthInfoStep"
+import CoverageStep from "./steps/CoverageStep"
+import ContactStep from "./steps/ContactStep"
 
-const STEPS = ["Personal Info", "Family Info", "Coverage Info", "Contact Info"]
+const steps = [
+  { id: 'basic-info', title: 'Basic Info' },
+  { id: 'health', title: 'Health Details' },
+  { id: 'coverage', title: 'Coverage Needs' },
+  { id: 'contact', title: 'Contact Info' },
+]
 
 export default function QuoteForm() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
-  const [errorMessage, setErrorMessage] = useState("")
-  
-  const methods = useForm<QuoteFormInput>({
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const methods = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
     mode: "onChange",
   })
-  
-  const { handleSubmit, formState: { isValid, isSubmitting } } = methods
-  
-  const onSubmit = async (data: QuoteFormInput) => {
+
+  const { handleSubmit, trigger } = methods
+
+  const nextStep = async () => {
+    const fields = getFieldsForStep(currentStep)
+    const isValid = await trigger(fields)
+    
+    if (isValid) {
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))
+      window.scrollTo(0, 0)
+    }
+  }
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0))
+    window.scrollTo(0, 0)
+  }
+
+  const onSubmit = async (data: QuoteFormData) => {
+    setIsSubmitting(true)
     try {
-      setSubmitStatus("idle")
-      setErrorMessage("")
-      
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: {
@@ -36,144 +53,105 @@ export default function QuoteForm() {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to submit form")
+        throw new Error("Failed to submit")
       }
 
-      setSubmitStatus("success")
-      
-      // Optional: Redirect to Calendly or thank you page
-      // window.location.href = "/thank-you"
+      // Redirect to success page
+      window.location.href = "/quote/success"
     } catch (error) {
       console.error("Error submitting form:", error)
-      setSubmitStatus("error")
-      setErrorMessage("There was an error submitting your request. Please try again.")
+      setIsSubmitting(false)
     }
   }
-  
-  const nextStep = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1))
-  }
-  
-  const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0))
+
+  const getFieldsForStep = (step: number) => {
+    switch (step) {
+      case 0:
+        return ['firstName', 'lastName', 'dateOfBirth', 'gender', 'zipCode']
+      case 1:
+        return ['height', 'weight', 'tobaccoUse', 'healthConditions']
+      case 2:
+        return ['coverageAmount', 'coverageType', 'termLength', 'monthlyBudget']
+      case 3:
+        return ['email', 'phone', 'beneficiaryRelation']
+      default:
+        return []
+    }
   }
 
-  if (submitStatus === "success") {
-    return (
-      <div className="text-center py-8">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-          <svg
-            className="h-6 w-6 text-green-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between mb-2">
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              className={`flex-1 text-center ${
+                index === currentStep
+                  ? 'text-blue-600 font-medium'
+                  : index < currentStep
+                  ? 'text-green-600'
+                  : 'text-gray-400'
+              }`}
+            >
+              {step.title}
+            </div>
+          ))}
         </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900">
-          Thank You for Your Request!
-        </h3>
-        <p className="mt-2 text-sm text-gray-500">
-          A licensed insurance agent will contact you within 24 hours to discuss
-          your coverage options.
-        </p>
-        <div className="mt-6">
-          <Button
-            onClick={() => window.location.href = "https://calendly.com/your-link"}
-            className="w-full sm:w-auto"
-          >
-            Schedule a Call Now
-          </Button>
+        <div className="h-2 flex rounded-full bg-gray-200 overflow-hidden">
+          {steps.map((_, index) => (
+            <div
+              key={index}
+              className={`flex-1 ${
+                index <= currentStep ? 'bg-blue-600' : 'bg-transparent'
+              } ${index === 0 ? 'rounded-l-full' : ''} ${
+                index === steps.length - 1 ? 'rounded-r-full' : ''
+              }`}
+            />
+          ))}
         </div>
       </div>
-    )
-  }
-  
-  return (
-    <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="space-y-6">
-          {/* Progress indicator */}
-          <div className="flex justify-between">
-            {STEPS.map((step, index) => (
-              <div
-                key={step}
-                className={`flex items-center ${
-                  index <= currentStep ? "text-blue-600" : "text-gray-400"
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                    index <= currentStep
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-300"
-                  }`}
-                >
-                  {index + 1}
-                </div>
-                <span className="ml-2 text-sm font-medium hidden sm:inline">{step}</span>
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={`h-0.5 w-12 ml-2 ${
-                      index < currentStep ? "bg-blue-600" : "bg-gray-300"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
 
-          {/* Form steps */}
-          <div className="mt-8">
-            {currentStep === 0 && <PersonalInfoStep />}
-            {currentStep === 1 && <FamilyInfoStep />}
-            {currentStep === 2 && <CoverageInfoStep />}
-            {currentStep === 3 && <ContactInfoStep />}
-          </div>
-        </div>
+      {/* Form */}
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {currentStep === 0 && <BasicInfoStep />}
+          {currentStep === 1 && <HealthInfoStep />}
+          {currentStep === 2 && <CoverageStep />}
+          {currentStep === 3 && <ContactStep />}
 
-        {/* Error message */}
-        {submitStatus === "error" && (
-          <div className="p-4 bg-red-50 rounded-md">
-            <p className="text-sm text-red-600">{errorMessage}</p>
-          </div>
-        )}
-
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-8">
-          <Button
-            type="button"
-            onClick={prevStep}
-            disabled={currentStep === 0}
-            variant="outline"
-          >
-            Previous
-          </Button>
-          
-          {currentStep < STEPS.length - 1 ? (
-            <Button
+          <div className="flex justify-between pt-6">
+            <button
               type="button"
-              onClick={nextStep}
-              disabled={!isValid}
+              onClick={prevStep}
+              className={`px-6 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors ${
+                currentStep === 0 ? 'invisible' : ''
+              }`}
             >
-              Next
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={!isValid || isSubmitting}
-            >
-              {isSubmitting ? "Submitting..." : "Submit Quote Request"}
-            </Button>
-          )}
-        </div>
-      </form>
-    </FormProvider>
+              Previous
+            </button>
+            
+            {currentStep === steps.length - 1 ? (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-8 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Submitting...' : 'Get My Quote'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="px-8 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                Continue
+              </button>
+            )}
+          </div>
+        </form>
+      </FormProvider>
+    </div>
   )
 } 

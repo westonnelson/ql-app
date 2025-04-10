@@ -1,38 +1,29 @@
-import * as z from "zod"
+import { z } from 'zod'
 
-export const personalInfoSchema = z.object({
-  age: z.number().min(18).max(85),
-  gender: z.enum(["male", "female", "other"]),
-  incomeRange: z.string(),
-})
-
-export const familyInfoSchema = z.object({
-  maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]),
-  dependents: z.number().min(0).max(5),
-})
-
-export const coverageInfoSchema = z.object({
-  coverageAmount: z.number().min(50000).max(10000000),
-  insuranceType: z.enum(["TERM", "WHOLE", "UNIVERSAL", "UNSURE"]),
-})
-
-export const contactInfoSchema = z.object({
-  firstName: z.string().min(2).max(50),
-  lastName: z.string().min(2).max(50),
-  email: z.string().email(),
-  phone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
-})
-
-// Combined schema for the entire form
 export const quoteFormSchema = z.object({
-  ...personalInfoSchema.shape,
-  ...familyInfoSchema.shape,
-  ...coverageInfoSchema.shape,
-  ...contactInfoSchema.shape,
+  // Basic Info
+  firstName: z.string().min(2, 'First name is required'),
+  lastName: z.string().min(2, 'Last name is required'),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Please enter a valid date'),
+  gender: z.enum(['male', 'female', 'other']),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Please enter a valid ZIP code'),
+
+  // Health Info
+  height: z.string().regex(/^\d{1,2}'\d{1,2}"$/, 'Please enter height in format: 5\'10"'),
+  weight: z.string().regex(/^\d{2,3}$/, 'Please enter weight in pounds'),
+  tobaccoUse: z.boolean(),
+  healthConditions: z.string().optional(),
+
+  // Coverage Info
+  coverageAmount: z.number().min(25000).max(10000000),
+  coverageType: z.enum(['term', 'whole', 'universal']),
+  termLength: z.number().optional(),
+  monthlyBudget: z.number().optional(),
+
+  // Contact Info
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().regex(/^\d{10}$/, 'Please enter a valid 10-digit phone number'),
+  beneficiaryRelation: z.string().optional(),
 })
 
-export type PersonalInfoInput = z.infer<typeof personalInfoSchema>
-export type FamilyInfoInput = z.infer<typeof familyInfoSchema>
-export type CoverageInfoInput = z.infer<typeof coverageInfoSchema>
-export type ContactInfoInput = z.infer<typeof contactInfoSchema>
-export type QuoteFormInput = z.infer<typeof quoteFormSchema> 
+export type QuoteFormData = z.infer<typeof quoteFormSchema> 
