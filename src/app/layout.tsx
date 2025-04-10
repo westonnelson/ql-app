@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -23,11 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.className}>
       <body>
-        <AnalyticsProvider>
-          <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-            {children}
-          </main>
-        </AnalyticsProvider>
+        <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+          {children}
+        </main>
       </body>
     </html>
   )
