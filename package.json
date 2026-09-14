@@ -47,5 +47,11 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "js-yaml": "4.3.1"
+  },
+  "resolutions": {
+    "js-yaml": "4.3.1"
   }
 }
